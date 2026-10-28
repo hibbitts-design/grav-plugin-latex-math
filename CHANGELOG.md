@@ -1,3 +1,9 @@
+# v0.9.1
+## XX/XX/2026
+
+1. [](#bugfix)
+    * HTMX: math now draws on pages swapped in with HTMX (such as Grav Helios Course Hub), not just on full page loads
+
 # v0.9.0
 ## 10/22/2026
 
