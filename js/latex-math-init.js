@@ -3,6 +3,8 @@
 /*
  * LaTeX Math plugin – draws each formula on the page with KaTeX or MathJax (window.GravMath.engine, set by latex-math.php).
  * Formulas are <span class="math-inline"> and <div class="math-block"> boxes from latex-math.php.
+ * On sites that swap pages in with HTMX (such as Helios with its HTMX setting on), formulas in each swapped-in page
+ * are drawn too.
  */
 
 // Wrapped in a function that runs straight away, so its names can't clash with the theme's scripts
@@ -13,10 +15,11 @@
   var formulas = [];
 
   /**
-   * Finds every formula box.
+   * Finds every formula box not drawn yet.
    */
   function findFormulas() {
-    var boxes = document.querySelectorAll('.math-inline, .math-block');
+    formulas = [];
+    var boxes = document.querySelectorAll('.math-inline:not([data-processed]), .math-block:not([data-processed])');
     for (var i = 0; i < boxes.length; i++) {
       formulas.push({
         box: boxes[i],
@@ -106,4 +109,7 @@
   } else {
     start();
   }
+
+  // After HTMX swaps in a page, draw its formulas (htmx:afterSettle comes once the new content is in place)
+  document.addEventListener('htmx:afterSettle', start);
 })();

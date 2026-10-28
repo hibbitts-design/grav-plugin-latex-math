@@ -191,12 +191,17 @@ class LatexMathPlugin extends Plugin
     /**
      * Adds the math engine to the finished page, but only when the page has math. This checks the whole page,
      * so math shown from other pages (such as in a full text or print view) is drawn too.
+     *
+     * On a site that swaps pages in with HTMX, every page gets it, as a page swapped in later may have math.
      */
     public function onOutputGenerated()
     {
         $output = $this->grav->output;
+        if (!is_string($output)) {
+            return;
+        }
 
-        if (!is_string($output) || !$this->hasMath($output)) {
+        if (!$this->hasMath($output) && !$this->swapsPages()) {
             return;
         }
 
@@ -218,6 +223,14 @@ class LatexMathPlugin extends Plugin
         }
 
         $this->grav->output = $output;
+    }
+
+    /**
+     * Whether the theme swaps pages in with HTMX rather than loading each one in full (Helios's HTMX setting).
+     */
+    protected function swapsPages()
+    {
+        return (bool) $this->config->get('theme.htmx.enabled', false);
     }
 
     /**
@@ -283,10 +296,10 @@ HTML;
             $katex_js = Utils::url('plugin://latex-math/js/katex/katex.min.js') . '?v=' . self::KATEX_VERSION;
             $scripts .= '<script src="' . $katex_js . '"></script>' . "\n";
 
-            // KaTeX's mhchem add-on for chemistry (\ce and \pu), only on pages that use it (MathJax loads its own copy
-            // from js/mathjax/input/tex/extensions when needed)
+            // KaTeX's mhchem add-on for chemistry (\ce and \pu), only on pages that use it – or on every page when pages
+            // are swapped in with HTMX (MathJax loads its own copy from js/mathjax/input/tex/extensions when needed)
             $output = $this->grav->output;
-            if (strpos($output, '\\ce{') !== false || strpos($output, '\\pu{') !== false) {
+            if (strpos($output, '\\ce{') !== false || strpos($output, '\\pu{') !== false || $this->swapsPages()) {
                 $mhchem_js = Utils::url('plugin://latex-math/js/katex/contrib/mhchem.min.js') . '?v=' . self::KATEX_VERSION;
                 $scripts .= '<script src="' . $mhchem_js . '"></script>' . "\n";
             }

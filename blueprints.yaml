@@ -1,7 +1,7 @@
 name: LaTeX Math
 slug: latex-math
 type: plugin
-version: 0.9.0
+version: 0.9.1
 description: 'Draws LaTeX math in a page with KaTeX or MathJax, written as $…$, $$ … $$, \( … \), \[ … \] or in a ```math block.'
 icon: superscript
 author:

@@ -42,6 +42,8 @@ See KaTeX's [supported functions](https://katex.org/docs/supported.html) or Math
 > [!TIP]
 > Prices such as $5 and $10 stay as text, and `\$` shows a dollar sign. For a page with many prices, add `latex-math: { inline_dollars: false }` to its front matter.
 
+On sites that swap pages in with HTMX, such as Helios with its HTMX setting on, math is drawn on each page as it's swapped in.
+
 ## Settings
 
 - **Math Engine** – KaTeX (the default) is faster; MathJax covers more of LaTeX. A page's front matter can choose its own, with `latex-math: { engine: mathjax }`
