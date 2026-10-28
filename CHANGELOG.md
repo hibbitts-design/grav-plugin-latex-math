@@ -1,3 +1,9 @@
+# v0.9.2
+## 10/28/2026
+
+1. [](#improved)
+    * Plugin description in plain text, without math symbols or code marks
+
 # v0.9.1
 ## 10/28/2026
 
