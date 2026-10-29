@@ -275,8 +275,8 @@ class LatexMathPlugin extends Plugin
                 continue;
             }
 
-            // a line that is only $$ … $$ is a block of math, which was never escaped
-            $whole_block = (bool) preg_match('/^\s*\$\$.*\$\$\s*$/', $line);
+            // a line that is only $$ … $$ is a block of math, which was never escaped (> in front: in a quote or callout)
+            $whole_block = (bool) preg_match('/^\s*(?:>\s*)*\$\$.*\$\$\s*$/', $line);
 
             // split the line into code (`…`) and other text, and fix only the other text
             $parts = preg_split('/(`+[^`]*`+)/', $line, -1, PREG_SPLIT_DELIM_CAPTURE);
