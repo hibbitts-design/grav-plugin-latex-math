@@ -2,7 +2,8 @@
 
 /*
  * LaTeX Math plugin – draws each formula on the page with KaTeX or MathJax (window.GravMath.engine, set by latex-math.php).
- * Formulas are <span class="math-inline"> and <div class="math-block"> boxes from latex-math.php.
+ * Formulas are <span class="math-inline"> and <div class="math-block"> boxes from latex-math.php, holding the LaTeX
+ * between its $ or $$ markers.
  * On sites that swap pages in with HTMX (such as Helios with its HTMX setting on), formulas in each swapped-in page
  * are drawn too.
  */
@@ -24,10 +25,24 @@
       formulas.push({
         box: boxes[i],
         // textContent turns &lt; back into <, giving the LaTeX as written
-        latex: boxes[i].textContent,
+        latex: withoutMarkers(boxes[i].textContent),
         display: boxes[i].classList.contains('math-block')
       });
     }
+  }
+
+  /**
+   * Takes off the $$ or $ markers around a formula's LaTeX (pages saved before version 0.9.3 have none).
+   */
+  function withoutMarkers(text) {
+    text = text.trim();
+    if (text.length > 4 && text.slice(0, 2) === '$$' && text.slice(-2) === '$$') {
+      return text.slice(2, -2).trim();
+    }
+    if (text.length > 2 && text.charAt(0) === '$' && text.slice(-1) === '$') {
+      return text.slice(1, -1);
+    }
+    return text;
   }
 
   /**

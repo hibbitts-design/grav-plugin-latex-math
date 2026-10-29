@@ -14,6 +14,7 @@ use RocketTheme\Toolbox\Event\Event;
  *
  *   1. onMarkdownInitialized – sets the math aside before Markdown can change it (such as _ into italics)
  *   2. onOutputGenerated     – on pages with math, adds the chosen engine and js/latex-math-init.js, which draws it
+ *                              (and on a page's .md address, tidies its math)
  *
  * Math uses the page's text colour, so it follows light and dark mode by itself.
  *
@@ -106,6 +107,7 @@ class LatexMathPlugin extends Plugin
         };
 
         $markdown->blockMathBlockComplete = function ($block) {
+            $block['element']['text'] = $this->withMarkers(trim($block['element']['text']), true);
             return $block;
         };
 
@@ -142,7 +144,7 @@ class LatexMathPlugin extends Plugin
         };
 
         $markdown->blockMathFenceComplete = function ($block) {
-            $block['element']['text'] = trim($block['element']['text']);
+            $block['element']['text'] = $this->withMarkers(trim($block['element']['text']), true);
             return $block;
         };
 
@@ -155,7 +157,7 @@ class LatexMathPlugin extends Plugin
                 return ['markup' => '$', 'extent' => 2];
             }
             if (preg_match('/^\\\\\((.+?)\\\\\)/s', $excerpt['text'], $match)) {
-                return ['extent' => strlen($match[0]), 'element' => $this->mathBox('span', 'math-inline', trim($match[1]))];
+                return ['extent' => strlen($match[0]), 'element' => $this->mathBox('span', 'math-inline', $this->withMarkers(trim($match[1]), false))];
             }
             return null;
         };
@@ -171,13 +173,22 @@ class LatexMathPlugin extends Plugin
         $markdown->addInlineType('$', 'MathInline');
         $markdown->inlineMathInline = function ($excerpt) {
             if (preg_match('/^\$\$(.+?)\$\$/', $excerpt['text'], $match)) {
-                return ['extent' => strlen($match[0]), 'element' => $this->mathBox('span', 'math-block', trim($match[1]))];
+                return ['extent' => strlen($match[0]), 'element' => $this->mathBox('span', 'math-block', $this->withMarkers(trim($match[1]), true))];
             }
             if (preg_match('/^\$(?![\s$])((?:\\\\.|[^$\\\\])+?)(?<!\s)\$(?!\d)/', $excerpt['text'], $match)) {
-                return ['extent' => strlen($match[0]), 'element' => $this->mathBox('span', 'math-inline', $match[1])];
+                return ['extent' => strlen($match[0]), 'element' => $this->mathBox('span', 'math-inline', $this->withMarkers($match[1], false))];
             }
             return null;
         };
+    }
+
+    /**
+     * Math with its $$ or $ markers, kept in the page so they carry over when Grav 2 turns a page back into Markdown
+     * (a page's .md address), for tools such as Docsify-This to draw. js/latex-math-init.js takes them off again.
+     */
+    protected function withMarkers($latex, $display)
+    {
+        return $display ? "$$\n" . $latex . "\n$$" : '$' . $latex . '$';
     }
 
     /**
@@ -201,12 +212,18 @@ class LatexMathPlugin extends Plugin
             return;
         }
 
+        // A page's .md address (Grav 2): the page turned back into Markdown
+        $page = $this->grav['page'];
+        if ($page && $page->templateFormat() === 'md') {
+            $this->grav->output = $this->unescapeInlineMath($output);
+            return;
+        }
+
         if (!$this->hasMath($output) && !$this->swapsPages()) {
             return;
         }
 
         // Only web pages (not RSS feeds or JSON), with a </body> to add the scripts before
-        $page = $this->grav['page'];
         if (($page && $page->templateFormat() !== 'html') || stripos($output, '</body>') === false) {
             return;
         }
@@ -223,6 +240,73 @@ class LatexMathPlugin extends Plugin
         }
 
         $this->grav->output = $output;
+    }
+
+    /**
+     * When Grav 2 turns a page back into Markdown, it puts a \ before each \, *, _, [ and ] in a sentence (but not
+     * in a block of math). This takes those out again inside math in a sentence, so $\\pi$ is $\pi$ again. Code and
+     * the front matter at the top are left as they are.
+     */
+    protected function unescapeInlineMath($markdown)
+    {
+        $lines = explode("\n", $markdown);
+        $fence = null;
+        // the front matter between the first two --- lines is YAML, where \\ is a backslash
+        $in_front_matter = isset($lines[0]) && trim($lines[0]) === '---';
+
+        foreach ($lines as $i => $line) {
+            if ($in_front_matter) {
+                if ($i > 0 && trim($line) === '---') {
+                    $in_front_matter = false;
+                }
+                continue;
+            }
+
+            // skip the lines of a ``` or ~~~ code block (it ends at the same kind of fence, at least as long, alone)
+            if ($fence === null && preg_match('/^\s*(`{3,}|~{3,})/', $line, $match)) {
+                $fence = $match[1];
+                continue;
+            }
+            if ($fence !== null) {
+                if (preg_match('/^\s*(`{3,}|~{3,})\s*$/', $line, $match)
+                    && $match[1][0] === $fence[0] && strlen($match[1]) >= strlen($fence)) {
+                    $fence = null;
+                }
+                continue;
+            }
+
+            // a line that is only $$ … $$ is a block of math, which was never escaped
+            $whole_block = (bool) preg_match('/^\s*\$\$.*\$\$\s*$/', $line);
+
+            // split the line into code (`…`) and other text, and fix only the other text
+            $parts = preg_split('/(`+[^`]*`+)/', $line, -1, PREG_SPLIT_DELIM_CAPTURE);
+            foreach ($parts as $j => $part) {
+                if ($part === '' || $part[0] === '`') {
+                    continue;
+                }
+                // $$…$$ within a sentence
+                if (!$whole_block) {
+                    $part = preg_replace_callback('/\$\$(.+?)\$\$/', function ($math) {
+                        return '$$' . $this->unescape($math[1]) . '$$';
+                    }, $part);
+                }
+                // $…$ as in onMarkdownInitialized: no space just inside either $, and not $$
+                $parts[$j] = preg_replace_callback('/(?<![\\\\$])\$(?![\s$])((?:\\\\.|[^$\\\\])+?)(?<!\s)\$(?![\d$])/', function ($math) {
+                    return '$' . $this->unescape($math[1]) . '$';
+                }, $part);
+            }
+            $lines[$i] = implode('', $parts);
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Takes the \ off \\, \*, \_, \[ and \].
+     */
+    protected function unescape($latex)
+    {
+        return preg_replace('/\\\\([\\\\*_\[\]])/', '$1', $latex);
     }
 
     /**

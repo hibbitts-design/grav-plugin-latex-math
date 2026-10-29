@@ -9,7 +9,7 @@ Math written as text suits open educational resources (OER) and open publishing:
 - **Easy to revise and remix** – anyone reusing your content can edit a formula's text, with no image or equation editor needed
 - **Covered by the page's licence** – a formula is part of the text, so there's no separate image to credit or track
 - **Accessible** – screen readers read the math, and it stays sharp at any zoom
-- **Portable** – the same math shows on GitHub, in Docsify-This and in many Markdown editors, and stays readable as plain text anywhere else
+- **Portable** – the same math shows on GitHub, in Docsify-This and in many Markdown editors (also from a page's .md address in Grav 2), and stays readable as plain text anywhere else
 
 ## Installation
 
