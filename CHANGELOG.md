@@ -1,5 +1,5 @@
 # v0.9.4
-## XX/XX/2026
+## 10/29/2026
 
 1. [](#bugfix)
     * A math block inside a callout or quote keeps its \\ line breaks in a page's Markdown version
