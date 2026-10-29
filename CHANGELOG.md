@@ -1,5 +1,5 @@
 # v0.9.3
-## XX/XX/2026
+## 10/29/2026
 
 1. [](#improved)
     * Math keeps its $ markers in a page's Markdown version (Grav 2's .md address), so tools such as Docsify-This can draw it
